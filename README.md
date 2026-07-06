@@ -4,12 +4,13 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 
 ## Features
 
-- Upload participant names from .xlsx, .xls, or .csv
-- Keep up to 50 unique names
+- Upload participant names from `.xlsx`, `.xls`, or `.csv`
+- Support up to 800 unique participants
+- Read participant details from `Badge No`, `Name`, and `Title`
 - Show the full uploaded list in a visible scrollable table
-- Draw 10 unique winners at once
+- Draw 1 unique winner or 10 unique winners at once
 - Prevent repeat winners until the raffle is reset
-- Highlight the latest 10 winners
+- Highlight the latest winners clearly
 - Keep a full draw history with timestamps
 - Download all winners as CSV
 - Responsive layout for desktop and mobile
@@ -18,31 +19,22 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 ## File Format
 
 - The app reads the first worksheet in the uploaded file.
-- It uses the first non-empty cell in each row as the participant name.
-- Common headers such as Name, Names, Participant, Participant Name, and Employee Name are ignored automatically.
-- Duplicate names are removed automatically.
+- Preferred columns are `Badge No`, `Name`, and `Title`.
+- Column matching is flexible, so common header variations such as `Badge Number`, `Full Name`, and `Job Title` also work.
+- If headers are missing, the app falls back to the first filled cells in each row.
+- Duplicate participants are removed automatically.
+- If `Badge No` exists, it is used as the unique key. Otherwise the app falls back to `Name + Title`.
 
 ## Run Locally
 
-Open index.html in any modern browser.
-
-## Publish To GitHub Pages
-
-1. Create a GitHub repository named Super-League-Raffle.
-2. Upload the project files to the repository root.
-3. Open the repository settings on GitHub.
-4. In Pages, choose Deploy from a branch.
-5. Select the main branch and the / (root) folder.
-6. Save the settings and wait for GitHub Pages to publish the site.
+Open `index.html` in any modern browser.
 
 ## Suggested Test Data
 
-You can use the included sample-participants.csv file or create a sheet with one column like this:
+You can use the included `sample-participants.csv` file or create a sheet with columns like this:
 
-| Name |
-| --- |
-| Ahmed Ali |
-| Fatima Saeed |
-| Noor Hassan |
-
-Triggering GitHub Pages redeploy.
+| Badge No | Name | Title |
+| --- | --- | --- |
+| 1001 | Ahmed Ali | Sales Executive |
+| 1002 | Fatima Saeed | Team Leader |
+| 1003 | Noor Hassan | Operations Coordinator |
