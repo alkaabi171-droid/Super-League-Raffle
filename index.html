@@ -576,13 +576,13 @@
       <div>
         <section class="panel">
           <div class="panel-head">
-            <h2>Latest Winners</h2>
+            <h2>Winners</h2>
             <span class="count" id="winnerCount">0 selected</span>
           </div>
           <div class="draw-area">
             <div class="draw-message" id="drawMessage">Ready for the Super League raffle.</div>
             <div class="winner-grid" id="winnerGrid"></div>
-            <div class="help">Use columns such as <strong>Badge No</strong>, <strong>Name</strong>, and <strong>Title</strong>. Accepted files: <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong>. Only the first 800 unique participants are kept.</div>
+            <div class="help">Use columns such as <strong>Badge No</strong>, <strong>Name</strong>, and <strong>Title</strong>. Accepted files: <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong>. Only the first 800 unique participants are kept, and the raffle is limited to 50 total winners before reset.</div>
           </div>
         </section>
 
@@ -601,6 +601,7 @@
 
   <script>
     const MAX_PARTICIPANTS = 800;
+    const MAX_WINNERS = 50;
     const MULTI_DRAW_SIZE = 10;
     const SINGLE_DRAW_SIZE = 1;
 
@@ -669,7 +670,7 @@
         renderAll();
 
         const ignoredCount = Math.max(0, parsedParticipants.length - MAX_PARTICIPANTS);
-        const participantLabel = `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"}`;
+      const participantLabel = `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"}`;
         status.textContent = ignoredCount > 0
           ? `${participantLabel} loaded from ${file.name}. ${ignoredCount} extra ${ignoredCount === 1 ? "participant was" : "participants were"} ignored.`
           : `${participantLabel} loaded from ${file.name}.`;
@@ -808,6 +809,20 @@
     }
 
     function drawWinners(drawSize) {
+      const winnersAlreadyDrawn = getTotalWinnersCount();
+      const winnerSlotsLeft = MAX_WINNERS - winnersAlreadyDrawn;
+
+      if (winnerSlotsLeft <= 0) {
+        setDrawMessage(`The raffle has reached the ${MAX_WINNERS}-winner limit. Reset or upload a new list to continue.`, "warning");
+        return;
+      }
+
+      if (drawSize > winnerSlotsLeft) {
+        const drawLabel = drawSize === 1 ? "1 winner" : `${drawSize} winners`;
+        setDrawMessage(`Only ${winnerSlotsLeft} winner ${winnerSlotsLeft === 1 ? "slot remains" : "slots remain"} before reaching the ${MAX_WINNERS}-winner limit, so you cannot draw ${drawLabel} right now.`, "warning");
+        return;
+      }
+
       if (availableParticipants.length < drawSize) {
         const actionLabel = drawSize === 1 ? "draw 1 winner" : `draw ${drawSize} winners`;
         setDrawMessage(`Only ${availableParticipants.length} eligible ${availableParticipants.length === 1 ? "participant remains" : "participants remain"}. Reset or upload a new list to ${actionLabel}.`, "warning");
@@ -892,14 +907,15 @@
     }
 
     function renderLatestWinners() {
-      winnerCount.textContent = `${latestWinners.length} selected`;
+      const allWinners = getAllWinners();
+      winnerCount.textContent = `${allWinners.length} selected`;
 
-      if (!latestWinners.length) {
-        winnerGrid.innerHTML = '<div class="empty" style="grid-column:1 / -1">The latest winners will appear here after each draw.</div>';
+      if (!allWinners.length) {
+        winnerGrid.innerHTML = '<div class="empty" style="grid-column:1 / -1">All winners will appear here as they are drawn.</div>';
         return;
       }
 
-      winnerGrid.innerHTML = latestWinners.map((participant, index) => {
+      winnerGrid.innerHTML = allWinners.map((participant, index) => {
         const badgeLine = participant.badgeNo ? `Badge No: ${escapeHtml(participant.badgeNo)}` : "Badge No: -";
         const titleLine = participant.title ? `Title: ${escapeHtml(participant.title)}` : "Title: -";
 
@@ -955,10 +971,20 @@
     }
 
     function updateControls() {
-      drawOneButton.disabled = availableParticipants.length < SINGLE_DRAW_SIZE;
-      drawTenButton.disabled = availableParticipants.length < MULTI_DRAW_SIZE;
+      const winnersAlreadyDrawn = getTotalWinnersCount();
+      const winnerSlotsLeft = MAX_WINNERS - winnersAlreadyDrawn;
+      drawOneButton.disabled = availableParticipants.length < SINGLE_DRAW_SIZE || winnerSlotsLeft < SINGLE_DRAW_SIZE;
+      drawTenButton.disabled = availableParticipants.length < MULTI_DRAW_SIZE || winnerSlotsLeft < MULTI_DRAW_SIZE;
       downloadButton.disabled = drawHistory.length === 0;
       resetButton.disabled = participants.length === 0;
+    }
+
+    function getAllWinners() {
+      return drawHistory.flatMap((entry) => entry.winners);
+    }
+
+    function getTotalWinnersCount() {
+      return getAllWinners().length;
     }
 
     function setDrawMessage(message, variant) {
