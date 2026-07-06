@@ -391,6 +391,21 @@
       margin-top: 18px;
     }
 
+    .winner-pagination {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .winner-page-info {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
     .history-list {
       max-height: 320px;
       overflow-y: auto;
@@ -513,6 +528,10 @@
       .history-meta {
         flex-direction: column;
       }
+
+      .winner-pagination {
+        align-items: stretch;
+      }
     }
   </style>
 </head>
@@ -558,7 +577,7 @@
       <article class="summary-card">
         <span>Completed Draws</span>
         <strong id="summaryDraws">0</strong>
-        <p>The latest winners stay highlighted below.</p>
+        <p>The winners list stays visible below with page controls.</p>
       </article>
     </section>
 
@@ -582,6 +601,11 @@
           <div class="draw-area">
             <div class="draw-message" id="drawMessage">Ready for the Super League raffle.</div>
             <div class="winner-grid" id="winnerGrid"></div>
+            <div class="winner-pagination" id="winnerPagination" hidden>
+              <button class="secondary" id="prevWinnersButton" type="button">Previous Winners</button>
+              <span class="winner-page-info" id="winnerPageInfo">Page 1 of 1</span>
+              <button class="secondary" id="nextWinnersButton" type="button">Next Winners</button>
+            </div>
             <div class="help">Use columns such as <strong>Badge No</strong>, <strong>Name</strong>, and <strong>Title</strong>. Accepted files: <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong>. Only the first 800 unique participants are kept, and the raffle is limited to 50 total winners before reset.</div>
           </div>
         </section>
@@ -604,11 +628,13 @@
     const MAX_WINNERS = 50;
     const MULTI_DRAW_SIZE = 10;
     const SINGLE_DRAW_SIZE = 1;
+    const WINNERS_PER_PAGE = 10;
 
     let participants = [];
     let availableParticipants = [];
     let latestWinners = [];
     let drawHistory = [];
+    let winnersPage = 1;
 
     const fileInput = document.getElementById("fileInput");
     const drawOneButton = document.getElementById("drawOneButton");
@@ -620,6 +646,10 @@
     const nameCount = document.getElementById("nameCount");
     const winnerGrid = document.getElementById("winnerGrid");
     const winnerCount = document.getElementById("winnerCount");
+    const winnerPagination = document.getElementById("winnerPagination");
+    const prevWinnersButton = document.getElementById("prevWinnersButton");
+    const nextWinnersButton = document.getElementById("nextWinnersButton");
+    const winnerPageInfo = document.getElementById("winnerPageInfo");
     const drawMessage = document.getElementById("drawMessage");
     const historyList = document.getElementById("historyList");
     const drawCount = document.getElementById("drawCount");
@@ -632,6 +662,8 @@
     drawTenButton.addEventListener("click", () => drawWinners(MULTI_DRAW_SIZE));
     downloadButton.addEventListener("click", downloadWinners);
     resetButton.addEventListener("click", resetRaffle);
+    prevWinnersButton.addEventListener("click", showPreviousWinnersPage);
+    nextWinnersButton.addEventListener("click", showNextWinnersPage);
 
     async function handleFileUpload(event) {
       const file = event.target.files[0];
@@ -666,6 +698,7 @@
         availableParticipants = [...participants];
         latestWinners = [];
         drawHistory = [];
+        winnersPage = 1;
 
         renderAll();
 
@@ -685,6 +718,7 @@
         availableParticipants = [];
         latestWinners = [];
         drawHistory = [];
+        winnersPage = 1;
         fileInput.value = "";
         renderAll();
         status.textContent = error.message;
@@ -842,6 +876,7 @@
         winners: latestWinners,
         timestamp: new Date().toLocaleString()
       });
+      winnersPage = getTotalWinnerPages();
 
       renderAll();
       setDrawMessage(`Draw ${drawHistory.length} complete. ${drawSize} ${drawSize === 1 ? "winner has" : "winners have"} been selected.`, "success");
@@ -856,6 +891,7 @@
       availableParticipants = [...participants];
       latestWinners = [];
       drawHistory = [];
+      winnersPage = 1;
 
       renderAll();
       status.textContent = `${participants.length} participants are ready for a fresh raffle.`;
@@ -912,21 +948,32 @@
 
       if (!allWinners.length) {
         winnerGrid.innerHTML = '<div class="empty" style="grid-column:1 / -1">All winners will appear here as they are drawn.</div>';
+        winnerPagination.hidden = true;
         return;
       }
 
-      winnerGrid.innerHTML = allWinners.map((participant, index) => {
+      const totalPages = getTotalWinnerPages();
+      winnersPage = clampWinnersPage(winnersPage, totalPages);
+      const startIndex = (winnersPage - 1) * WINNERS_PER_PAGE;
+      const winnersForPage = allWinners.slice(startIndex, startIndex + WINNERS_PER_PAGE);
+
+      winnerGrid.innerHTML = winnersForPage.map((participant, index) => {
         const badgeLine = participant.badgeNo ? `Badge No: ${escapeHtml(participant.badgeNo)}` : "Badge No: -";
         const titleLine = participant.title ? `Title: ${escapeHtml(participant.title)}` : "Title: -";
 
         return `
           <div class="winner-card" style="animation-delay:${index * 60}ms">
-            <span class="winner-number">${index + 1}</span>
+            <span class="winner-number">${startIndex + index + 1}</span>
             <span class="winner-name">${escapeHtml(participant.name)}</span>
             <div class="winner-meta">${badgeLine}<br>${titleLine}</div>
           </div>
         `;
       }).join("");
+
+      winnerPagination.hidden = totalPages <= 1;
+      winnerPageInfo.textContent = `Page ${winnersPage} of ${totalPages}`;
+      prevWinnersButton.disabled = winnersPage <= 1;
+      nextWinnersButton.disabled = winnersPage >= totalPages;
     }
 
     function renderHistory() {
@@ -987,6 +1034,24 @@
       return getAllWinners().length;
     }
 
+    function getTotalWinnerPages() {
+      return Math.max(1, Math.ceil(getTotalWinnersCount() / WINNERS_PER_PAGE));
+    }
+
+    function clampWinnersPage(page, totalPages) {
+      return Math.min(Math.max(page, 1), totalPages);
+    }
+
+    function showPreviousWinnersPage() {
+      winnersPage = Math.max(1, winnersPage - 1);
+      renderLatestWinners();
+    }
+
+    function showNextWinnersPage() {
+      winnersPage = Math.min(getTotalWinnerPages(), winnersPage + 1);
+      renderLatestWinners();
+    }
+
     function setDrawMessage(message, variant) {
       drawMessage.textContent = message;
       drawMessage.className = "draw-message";
@@ -1001,20 +1066,14 @@
         return;
       }
 
-      const rows = [["Draw", "Draw Size", "Winner Number", "Badge No", "Name", "Title", "Timestamp"]];
+      const rows = [["Badge No", "Name", "Title"]];
 
-      drawHistory.forEach((entry) => {
-        entry.winners.forEach((participant, index) => {
-          rows.push([
-            entry.drawNumber,
-            entry.drawSize,
-            index + 1,
-            participant.badgeNo,
-            participant.name,
-            participant.title,
-            entry.timestamp
-          ]);
-        });
+      getAllWinners().forEach((participant) => {
+        rows.push([
+          participant.badgeNo,
+          participant.name,
+          participant.title
+        ]);
       });
 
       const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
