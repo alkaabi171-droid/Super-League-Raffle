@@ -312,6 +312,91 @@
       padding: 22px;
     }
 
+    .wheel-panel {
+      margin-bottom: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fcfdff 0%, #f3f8fd 100%);
+    }
+
+    .wheel-panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .wheel-panel-head h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .wheel-panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .wheel-wrap {
+      position: relative;
+      width: min(100%, 420px);
+      margin: 0 auto;
+      aspect-ratio: 1;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      width: 0;
+      height: 0;
+      transform: translateX(-50%);
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 0;
+      border-bottom: 28px solid var(--sun);
+      filter: drop-shadow(0 8px 14px rgba(16, 32, 56, 0.18));
+      z-index: 2;
+    }
+
+    .wheel-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .wheel-center {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 88px;
+      height: 88px;
+      display: grid;
+      place-items: center;
+      transform: translate(-50%, -50%);
+      border: 6px solid #ffffff;
+      border-radius: 999px;
+      color: #ffffff;
+      background: linear-gradient(180deg, #0f5f9c 0%, #102038 100%);
+      box-shadow: 0 14px 28px rgba(16, 32, 56, 0.18);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      z-index: 2;
+    }
+
+    .wheel-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.55;
+    }
+
     .draw-message {
       margin-bottom: 18px;
       padding: 16px;
@@ -496,6 +581,11 @@
         grid-template-columns: 1fr;
       }
 
+      .wheel-panel-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
       th:nth-child(4),
       td:nth-child(4) {
         width: auto;
@@ -599,6 +689,20 @@
             <span class="count" id="winnerCount">0 selected</span>
           </div>
           <div class="draw-area">
+            <div class="wheel-panel" aria-label="Single winner wheel">
+              <div class="wheel-panel-head">
+                <div>
+                  <h3>Winner Wheel</h3>
+                  <p>Use <strong>Draw 1 Name</strong> to spin the wheel for a single winner. The wheel preview shows up to 24 eligible participants at once.</p>
+                </div>
+              </div>
+              <div class="wheel-wrap">
+                <div class="wheel-pointer" aria-hidden="true"></div>
+                <canvas class="wheel-canvas" id="wheelCanvas" width="420" height="420" aria-label="Raffle wheel"></canvas>
+                <div class="wheel-center">Spin</div>
+              </div>
+              <div class="wheel-note" id="wheelNote">Upload a participant file to enable the wheel.</div>
+            </div>
             <div class="draw-message" id="drawMessage">Ready for the Super League raffle.</div>
             <div class="winner-grid" id="winnerGrid"></div>
             <div class="winner-pagination" id="winnerPagination" hidden>
@@ -629,12 +733,17 @@
     const MULTI_DRAW_SIZE = 10;
     const SINGLE_DRAW_SIZE = 1;
     const WINNERS_PER_PAGE = 10;
+    const MAX_WHEEL_SLICES = 24;
+    const WHEEL_COLORS = ["#0f5f9c", "#1769aa", "#1f7ecb", "#f5b301", "#ffcf5a", "#0b8f71"];
 
     let participants = [];
     let availableParticipants = [];
     let latestWinners = [];
     let drawHistory = [];
     let winnersPage = 1;
+    let isSpinning = false;
+    let wheelRotation = 0;
+    let wheelEntries = [];
 
     const fileInput = document.getElementById("fileInput");
     const drawOneButton = document.getElementById("drawOneButton");
@@ -651,11 +760,14 @@
     const nextWinnersButton = document.getElementById("nextWinnersButton");
     const winnerPageInfo = document.getElementById("winnerPageInfo");
     const drawMessage = document.getElementById("drawMessage");
+    const wheelCanvas = document.getElementById("wheelCanvas");
+    const wheelNote = document.getElementById("wheelNote");
     const historyList = document.getElementById("historyList");
     const drawCount = document.getElementById("drawCount");
     const summaryParticipants = document.getElementById("summaryParticipants");
     const summaryRemaining = document.getElementById("summaryRemaining");
     const summaryDraws = document.getElementById("summaryDraws");
+    const wheelContext = wheelCanvas.getContext("2d");
 
     fileInput.addEventListener("change", handleFileUpload);
     drawOneButton.addEventListener("click", () => drawWinners(SINGLE_DRAW_SIZE));
@@ -699,11 +811,13 @@
         latestWinners = [];
         drawHistory = [];
         winnersPage = 1;
+        wheelRotation = 0;
+        wheelEntries = [];
 
         renderAll();
 
         const ignoredCount = Math.max(0, parsedParticipants.length - MAX_PARTICIPANTS);
-      const participantLabel = `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"}`;
+        const participantLabel = `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"}`;
         status.textContent = ignoredCount > 0
           ? `${participantLabel} loaded from ${file.name}. ${ignoredCount} extra ${ignoredCount === 1 ? "participant was" : "participants were"} ignored.`
           : `${participantLabel} loaded from ${file.name}.`;
@@ -719,6 +833,8 @@
         latestWinners = [];
         drawHistory = [];
         winnersPage = 1;
+        wheelRotation = 0;
+        wheelEntries = [];
         fileInput.value = "";
         renderAll();
         status.textContent = error.message;
@@ -842,7 +958,7 @@
         .trim();
     }
 
-    function drawWinners(drawSize) {
+    async function drawWinners(drawSize) {
       const winnersAlreadyDrawn = getTotalWinnersCount();
       const winnerSlotsLeft = MAX_WINNERS - winnersAlreadyDrawn;
 
@@ -863,24 +979,13 @@
         return;
       }
 
-      const pool = [...availableParticipants];
-      shuffle(pool);
+      const selectedWinners = pickRandomParticipants(drawSize);
 
-      latestWinners = pool.slice(0, drawSize);
-      const winnerKeys = new Set(latestWinners.map((participant) => participant.key));
+      if (drawSize === SINGLE_DRAW_SIZE) {
+        await spinWheelForWinner(selectedWinners[0]);
+      }
 
-      availableParticipants = availableParticipants.filter((participant) => !winnerKeys.has(participant.key));
-      drawHistory.push({
-        drawNumber: drawHistory.length + 1,
-        drawSize,
-        winners: latestWinners,
-        timestamp: new Date().toLocaleString()
-      });
-      winnersPage = getTotalWinnerPages();
-
-      renderAll();
-      setDrawMessage(`Draw ${drawHistory.length} complete. ${drawSize} ${drawSize === 1 ? "winner has" : "winners have"} been selected.`, "success");
-      status.textContent = `${availableParticipants.length} eligible ${availableParticipants.length === 1 ? "participant" : "participants"} remaining.`;
+      finalizeDraw(selectedWinners, drawSize);
     }
 
     function resetRaffle() {
@@ -892,6 +997,8 @@
       latestWinners = [];
       drawHistory = [];
       winnersPage = 1;
+      wheelRotation = 0;
+      wheelEntries = [];
 
       renderAll();
       status.textContent = `${participants.length} participants are ready for a fresh raffle.`;
@@ -900,10 +1007,82 @@
 
     function renderAll() {
       renderNames();
+      renderWheel();
       renderLatestWinners();
       renderHistory();
       updateSummary();
       updateControls();
+    }
+
+    function renderWheel() {
+      const size = wheelCanvas.width;
+      const center = size / 2;
+      const radius = center - 14;
+      wheelContext.clearRect(0, 0, size, size);
+
+      if (!participants.length) {
+        drawEmptyWheel(radius, center, "Upload participants");
+        wheelNote.textContent = "Upload a participant file to enable the wheel.";
+        return;
+      }
+
+      if (!availableParticipants.length) {
+        drawEmptyWheel(radius, center, "No eligible names");
+        wheelNote.textContent = `All ${MAX_WINNERS} winner slots have been used or no eligible participants remain. Reset the raffle to spin again.`;
+        return;
+      }
+
+      if (!wheelEntries.length || !wheelEntries.every((entry) => availableParticipants.some((participant) => participant.key === entry.key))) {
+        wheelEntries = buildWheelEntries();
+      }
+
+      const sliceAngle = (Math.PI * 2) / wheelEntries.length;
+      const labelRadius = radius * 0.68;
+
+      wheelEntries.forEach((participant, index) => {
+        const startAngle = wheelRotation + (index * sliceAngle) - (Math.PI / 2);
+        const endAngle = startAngle + sliceAngle;
+
+        wheelContext.beginPath();
+        wheelContext.moveTo(center, center);
+        wheelContext.arc(center, center, radius, startAngle, endAngle);
+        wheelContext.closePath();
+        wheelContext.fillStyle = WHEEL_COLORS[index % WHEEL_COLORS.length];
+        wheelContext.fill();
+
+        wheelContext.save();
+        wheelContext.translate(center, center);
+        wheelContext.rotate(startAngle + (sliceAngle / 2));
+        wheelContext.textAlign = "right";
+        wheelContext.fillStyle = index % 2 === 0 ? "#ffffff" : "#102038";
+        wheelContext.font = wheelEntries.length > 16 ? "600 11px Segoe UI" : "700 12px Segoe UI";
+        wheelContext.fillText(shortenWheelLabel(participant.name), labelRadius, 4);
+        wheelContext.restore();
+      });
+
+      wheelContext.beginPath();
+      wheelContext.arc(center, center, radius, 0, Math.PI * 2);
+      wheelContext.lineWidth = 8;
+      wheelContext.strokeStyle = "#ffffff";
+      wheelContext.stroke();
+
+      wheelNote.textContent = isSpinning
+        ? "Spinning the wheel for a single winner."
+        : `${availableParticipants.length} eligible ${availableParticipants.length === 1 ? "participant" : "participants"} ready for the wheel.`;
+    }
+
+    function drawEmptyWheel(radius, center, label) {
+      wheelContext.beginPath();
+      wheelContext.arc(center, center, radius, 0, Math.PI * 2);
+      wheelContext.fillStyle = "#edf3f8";
+      wheelContext.fill();
+      wheelContext.lineWidth = 8;
+      wheelContext.strokeStyle = "#ffffff";
+      wheelContext.stroke();
+      wheelContext.fillStyle = "#607284";
+      wheelContext.font = "700 20px Segoe UI";
+      wheelContext.textAlign = "center";
+      wheelContext.fillText(label, center, center + 8);
     }
 
     function renderNames() {
@@ -1020,10 +1199,10 @@
     function updateControls() {
       const winnersAlreadyDrawn = getTotalWinnersCount();
       const winnerSlotsLeft = MAX_WINNERS - winnersAlreadyDrawn;
-      drawOneButton.disabled = availableParticipants.length < SINGLE_DRAW_SIZE || winnerSlotsLeft < SINGLE_DRAW_SIZE;
-      drawTenButton.disabled = availableParticipants.length < MULTI_DRAW_SIZE || winnerSlotsLeft < MULTI_DRAW_SIZE;
-      downloadButton.disabled = drawHistory.length === 0;
-      resetButton.disabled = participants.length === 0;
+      drawOneButton.disabled = isSpinning || availableParticipants.length < SINGLE_DRAW_SIZE || winnerSlotsLeft < SINGLE_DRAW_SIZE;
+      drawTenButton.disabled = isSpinning || availableParticipants.length < MULTI_DRAW_SIZE || winnerSlotsLeft < MULTI_DRAW_SIZE;
+      downloadButton.disabled = isSpinning || drawHistory.length === 0;
+      resetButton.disabled = isSpinning || participants.length === 0;
     }
 
     function getAllWinners() {
@@ -1091,13 +1270,126 @@
 
     function shuffle(array) {
       for (let index = array.length - 1; index > 0; index -= 1) {
-        const randomValues = new Uint32Array(1);
-        crypto.getRandomValues(randomValues);
-        const randomIndex = randomValues[0] % (index + 1);
+        const randomIndex = getSecureRandomIndex(index + 1);
         [array[index], array[randomIndex]] = [array[randomIndex], array[index]];
       }
 
       return array;
+    }
+
+    function pickRandomParticipants(count) {
+      const pool = [...availableParticipants];
+      shuffle(pool);
+      return pool.slice(0, count);
+    }
+
+    function finalizeDraw(selectedWinners, drawSize) {
+      latestWinners = selectedWinners;
+      const winnerKeys = new Set(selectedWinners.map((participant) => participant.key));
+
+      availableParticipants = availableParticipants.filter((participant) => !winnerKeys.has(participant.key));
+      drawHistory.push({
+        drawNumber: drawHistory.length + 1,
+        drawSize,
+        winners: selectedWinners,
+        timestamp: new Date().toLocaleString()
+      });
+      winnersPage = getTotalWinnerPages();
+      wheelEntries = buildWheelEntries();
+
+      renderAll();
+      setDrawMessage(`Draw ${drawHistory.length} complete. ${drawSize} ${drawSize === 1 ? "winner has" : "winners have"} been selected.`, "success");
+      status.textContent = `${availableParticipants.length} eligible ${availableParticipants.length === 1 ? "participant" : "participants"} remaining.`;
+    }
+
+    function buildWheelEntries(forcedWinner) {
+      if (!availableParticipants.length) {
+        return [];
+      }
+
+      const pool = forcedWinner
+        ? availableParticipants.filter((participant) => participant.key !== forcedWinner.key)
+        : [...availableParticipants];
+      shuffle(pool);
+
+      const entries = forcedWinner ? [forcedWinner] : [];
+      const extraSlots = Math.max(0, Math.min(MAX_WHEEL_SLICES, availableParticipants.length) - entries.length);
+      return entries.concat(pool.slice(0, extraSlots));
+    }
+
+    async function spinWheelForWinner(winner) {
+      isSpinning = true;
+      drawOneButton.textContent = "Spinning...";
+      try {
+        setDrawMessage("Spinning the wheel for 1 winner...", "");
+        wheelEntries = buildWheelEntries(winner);
+        renderAll();
+
+        const winnerIndex = wheelEntries.findIndex((participant) => participant.key === winner.key);
+        const sliceAngle = (Math.PI * 2) / wheelEntries.length;
+        const desiredRotation = normalizeAngle(-(winnerIndex * sliceAngle) - (sliceAngle / 2));
+        const currentRotation = normalizeAngle(wheelRotation);
+        let delta = desiredRotation - currentRotation;
+
+        if (delta < 0) {
+          delta += Math.PI * 2;
+        }
+
+        const totalRotation = wheelRotation + (Math.PI * 2 * 6) + delta;
+        await animateWheelRotation(wheelRotation, totalRotation, 4200);
+        wheelRotation = desiredRotation;
+        wheelEntries = buildWheelEntries();
+      } finally {
+        isSpinning = false;
+        drawOneButton.textContent = "Draw 1 Name";
+        renderAll();
+      }
+    }
+
+    function animateWheelRotation(from, to, duration) {
+      return new Promise((resolve) => {
+        const startTime = performance.now();
+
+        function frame(now) {
+          const progress = Math.min(1, (now - startTime) / duration);
+          const eased = 1 - Math.pow(1 - progress, 4);
+          wheelRotation = from + ((to - from) * eased);
+          renderWheel();
+
+          if (progress < 1) {
+            requestAnimationFrame(frame);
+            return;
+          }
+
+          resolve();
+        }
+
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function getSecureRandomIndex(limit) {
+      if (limit <= 1) {
+        return 0;
+      }
+
+      const randomValues = new Uint32Array(1);
+      crypto.getRandomValues(randomValues);
+      return randomValues[0] % limit;
+    }
+
+    function normalizeAngle(angle) {
+      const fullTurn = Math.PI * 2;
+      return ((angle % fullTurn) + fullTurn) % fullTurn;
+    }
+
+    function shortenWheelLabel(text) {
+      const cleanText = String(text ?? "").trim();
+      if (cleanText.length <= 14) {
+        return cleanText;
+      }
+
+      return `${cleanText.slice(0, 12)}...`;
     }
 
     function csvCell(value) {
