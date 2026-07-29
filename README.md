@@ -8,7 +8,7 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 - Support up to 800 unique participants
 - Read participant details from `Badge No`, `Name`, and `Title`
 - Show the full uploaded list in a visible scrollable table
-- Draw 1 unique winner or 10 unique winners at once
+- Draw one unique winner at a time
 - Prevent repeat winners until the raffle is reset
 - Highlight the latest winners clearly
 - Keep a full draw history with timestamps
