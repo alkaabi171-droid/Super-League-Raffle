@@ -1,4 +1,4 @@
-# Super League Raffle
+# Lifting & Stacking Team - July Raffle Draw
 
 Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV list.
 
