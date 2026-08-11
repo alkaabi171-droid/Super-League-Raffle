@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lifting &amp; Stacking Team - July Raffle Draw</title>
+  <title>Super Team League Raffle Draw - July</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -629,11 +629,11 @@
   <header>
     <div class="hero">
       <div>
-        <h1>Lifting &amp; Stacking Team - July Raffle Draw</h1>
-        <p>Upload up to 800 participants with badge number, name, and title. Draw one winner at a time with no repeats until you reset the raffle.</p>
+        <h1>Super Team League Raffle Draw - July</h1>
+        <p>Upload up to 800 participants with badge number, name, and title. Draw one winner or 10 winners at a time with no repeats until you reset the raffle.</p>
       </div>
       <div class="hero-badge">
-        <strong>1</strong>
+        <strong>1 or 10</strong>
         <span>Winner Draw</span>
       </div>
     </div>
@@ -644,6 +644,7 @@
       <label class="upload-label" for="fileInput">Upload Excel, XLS, or CSV</label>
       <input id="fileInput" type="file" accept=".xlsx,.xls,.csv">
       <button class="primary" id="drawOneButton" disabled>Draw 1 Name</button>
+      <button class="primary" id="drawTenButton" disabled>Draw 10 Names</button>
       <button class="secondary" id="downloadButton" disabled>Download Winners CSV</button>
       <button class="danger" id="resetButton" disabled>Reset Raffle</button>
       <div class="status-wrap">
@@ -702,7 +703,7 @@
               </div>
               <div class="wheel-note" id="wheelNote">Upload a participant file to enable the wheel.</div>
             </div>
-            <div class="draw-message" id="drawMessage">Ready for the July raffle draw.</div>
+            <div class="draw-message" id="drawMessage">Ready for the Super Team League raffle draw.</div>
             <div class="winner-grid" id="winnerGrid"></div>
             <div class="winner-pagination" id="winnerPagination" hidden>
               <button class="secondary" id="prevWinnersButton" type="button">Previous Winners</button>
@@ -729,6 +730,7 @@
   <script>
     const MAX_PARTICIPANTS = 800;
     const MAX_WINNERS = 50;
+    const MULTI_DRAW_SIZE = 10;
     const SINGLE_DRAW_SIZE = 1;
     const WINNERS_PER_PAGE = 10;
     const MAX_WHEEL_SLICES = 24;
@@ -745,6 +747,7 @@
 
     const fileInput = document.getElementById("fileInput");
     const drawOneButton = document.getElementById("drawOneButton");
+    const drawTenButton = document.getElementById("drawTenButton");
     const downloadButton = document.getElementById("downloadButton");
     const resetButton = document.getElementById("resetButton");
     const status = document.getElementById("status");
@@ -768,6 +771,7 @@
 
     fileInput.addEventListener("change", handleFileUpload);
     drawOneButton.addEventListener("click", () => drawWinners(SINGLE_DRAW_SIZE));
+    drawTenButton.addEventListener("click", () => drawWinners(MULTI_DRAW_SIZE));
     downloadButton.addEventListener("click", downloadWinners);
     resetButton.addEventListener("click", resetRaffle);
     prevWinnersButton.addEventListener("click", showPreviousWinnersPage);
@@ -818,7 +822,11 @@
           ? `${participantLabel} loaded from ${file.name}. ${ignoredCount} extra ${ignoredCount === 1 ? "participant was" : "participants were"} ignored.`
           : `${participantLabel} loaded from ${file.name}.`;
 
-        setDrawMessage("Participants loaded successfully. Choose Draw 1 Name to begin.", "");
+        if (participants.length < MULTI_DRAW_SIZE) {
+          setDrawMessage(`Participants loaded. You can draw 1 winner now. At least ${MULTI_DRAW_SIZE} unique participants are required to draw 10 at once.`, "warning");
+        } else {
+          setDrawMessage("Participants loaded successfully. Choose Draw 1 Name or Draw 10 Names to begin.", "");
+        }
       } catch (error) {
         participants = [];
         availableParticipants = [];
@@ -1192,6 +1200,7 @@
       const winnersAlreadyDrawn = getTotalWinnersCount();
       const winnerSlotsLeft = MAX_WINNERS - winnersAlreadyDrawn;
       drawOneButton.disabled = isSpinning || availableParticipants.length < SINGLE_DRAW_SIZE || winnerSlotsLeft < SINGLE_DRAW_SIZE;
+      drawTenButton.disabled = isSpinning || availableParticipants.length < MULTI_DRAW_SIZE || winnerSlotsLeft < MULTI_DRAW_SIZE;
       downloadButton.disabled = isSpinning || drawHistory.length === 0;
       resetButton.disabled = isSpinning || participants.length === 0;
     }
@@ -1398,7 +1407,7 @@
     }
 
     renderAll();
-    setDrawMessage("Ready for the July raffle draw.", "");
+    setDrawMessage("Ready for the Super Team League raffle draw.", "");
   </script>
 </body>
 </html>
