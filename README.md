@@ -1,4 +1,4 @@
-# Super Team League Raffle Draw - July
+# Super Team League Raffle Draw - August
 
 Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV list.
 
