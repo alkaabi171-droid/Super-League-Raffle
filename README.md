@@ -1,4 +1,4 @@
-# Super Team League Raffle Draw - August
+# August & September Stacking and Lifting Raffle Draw
 
 Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV list.
 
