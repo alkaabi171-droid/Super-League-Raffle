@@ -4,7 +4,7 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 
 ## Features
 
-- Upload participant names from `.xlsx`, `.xls`, or `.csv`
+- Upload participant names from `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, or `.csv`
 - Support up to 800 unique participants
 - Read participant details from `Badge No`, `Name`, and `Title`
 - Show the full uploaded list in a visible scrollable table

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>August &amp; September Stacking and Lifting Raffle Draw</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
   <style>
     :root {
       --ink: #102038;
@@ -641,8 +641,8 @@
 
   <main>
     <section class="toolbar" aria-label="Raffle controls">
-      <label class="upload-label" for="fileInput">Upload Excel, XLS, or CSV</label>
-      <input id="fileInput" type="file" accept=".xlsx,.xls,.csv">
+      <label class="upload-label" for="fileInput">Upload Excel or CSV</label>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
       <button class="primary" id="drawOneButton" disabled>Draw 1 Name</button>
       <button class="primary" id="drawTenButton" disabled>Draw 10 Names</button>
       <button class="secondary" id="downloadButton" disabled>Download Winners CSV</button>
@@ -710,7 +710,7 @@
               <span class="winner-page-info" id="winnerPageInfo">Page 1 of 1</span>
               <button class="secondary" id="nextWinnersButton" type="button">Next Winners</button>
             </div>
-            <div class="help">Use columns such as <strong>Badge No</strong>, <strong>Name</strong>, and <strong>Title</strong>. Accepted files: <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong>. Only the first 800 unique participants are kept, and the raffle is limited to 50 total winners before reset.</div>
+            <div class="help">Use columns such as <strong>Badge No</strong>, <strong>Name</strong>, and <strong>Title</strong>. Accepted files: <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.xlsm</strong>, <strong>.xlsb</strong>, and <strong>.csv</strong>. Only the first 800 unique participants are kept, and the raffle is limited to 50 total winners before reset.</div>
           </div>
         </section>
 
