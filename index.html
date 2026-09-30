@@ -785,7 +785,8 @@
       }
 
       try {
-        const data = await file.arrayBuffer();
+        status.textContent = `Reading ${file.name}...`;
+        const data = await readFileAsArrayBuffer(file);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheetName = workbook.SheetNames[0];
 
@@ -837,9 +838,34 @@
         wheelEntries = [];
         fileInput.value = "";
         renderAll();
-        status.textContent = error.message;
-        setDrawMessage("The file could not be loaded. Please check the format and try again.", "warning");
+        const permissionProblem = error?.name === "NotReadableError"
+          || /permission|could not be read|not readable/i.test(error?.message || "");
+
+        status.textContent = permissionProblem
+          ? "The file is locked or not stored locally. Save or download a copy to this device, close it in Excel, then select the copied file."
+          : error.message;
+        setDrawMessage(
+          permissionProblem
+            ? "File access was blocked. Use a local, closed copy of the Excel or CSV file and try again."
+            : "The file could not be loaded. Please check the format and try again.",
+          "warning"
+        );
       }
+    }
+
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.addEventListener("load", () => resolve(reader.result), { once: true });
+        reader.addEventListener("error", () => {
+          reject(reader.error || new DOMException("The selected file could not be read.", "NotReadableError"));
+        }, { once: true });
+        reader.addEventListener("abort", () => {
+          reject(new DOMException("File reading was cancelled.", "AbortError"));
+        }, { once: true });
+        reader.readAsArrayBuffer(file);
+      });
     }
 
     function extractParticipants(rows) {
