@@ -1,0 +1,12 @@
+OFFLINE RAFFLE INSTRUCTIONS
+
+1. Right-click the downloaded ZIP file and choose Extract All.
+2. Open the extracted folder.
+3. Double-click index.html. It opens in your web browser without internet access.
+4. Select Upload Excel or CSV.
+5. Choose a locally saved participant file that is closed in Excel.
+
+Accepted formats: .xlsx, .xls, .xlsm, .xlsb, and .csv
+Recommended columns: Badge No, Name, Title
+
+Keep the vendor folder beside index.html. The offline page needs that folder to read spreadsheets.

@@ -114,7 +114,8 @@
     }
 
     button,
-    .upload-label {
+    .upload-label,
+    .download-link {
       min-height: 46px;
       padding: 0 18px;
       border: 1px solid var(--line);
@@ -127,11 +128,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      text-decoration: none;
       transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
     }
 
     button:hover,
-    .upload-label:hover {
+    .upload-label:hover,
+    .download-link:hover {
       transform: translateY(-1px);
       box-shadow: 0 10px 24px rgba(16, 32, 56, 0.1);
       border-color: #bfd0e0;
@@ -145,6 +148,12 @@
 
     button.secondary {
       background: #f8fbff;
+    }
+
+    .download-link {
+      color: var(--ocean);
+      background: #eef7ff;
+      border-color: #b8d7ef;
     }
 
     button.danger {
@@ -606,7 +615,8 @@
       }
 
       button,
-      .upload-label {
+      .upload-label,
+      .download-link {
         width: 100%;
       }
 
@@ -647,6 +657,7 @@
       <button class="primary" id="drawTenButton" disabled>Draw 10 Names</button>
       <button class="secondary" id="downloadButton" disabled>Download Winners CSV</button>
       <button class="danger" id="resetButton" disabled>Reset Raffle</button>
+      <a class="download-link" href="August-September-Raffle-Offline.zip" download>Download Offline Version</a>
       <div class="status-wrap">
         <span class="status-label">Status</span>
         <span class="status" id="status">No file uploaded yet.</span>
