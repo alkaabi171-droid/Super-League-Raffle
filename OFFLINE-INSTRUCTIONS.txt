@@ -6,6 +6,8 @@ OFFLINE RAFFLE INSTRUCTIONS
 4. Select Upload Excel or CSV.
 5. Choose a locally saved participant file that is closed in Excel.
 
+Alternatively, paste one name per line into Paste Participant Names and select Load Pasted Names.
+
 Accepted formats: .xlsx, .xls, .xlsm, .xlsb, and .csv
 Recommended columns: Badge No, Name, Title
 

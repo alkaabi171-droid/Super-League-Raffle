@@ -97,6 +97,7 @@
     }
 
     .toolbar,
+    .paste-panel,
     .panel {
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -148,6 +149,46 @@
 
     button.secondary {
       background: #f8fbff;
+    }
+
+    .paste-panel {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .paste-panel h2 {
+      margin: 0 0 6px;
+      font-size: 1.1rem;
+    }
+
+    .paste-panel p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .paste-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    #namesTextInput {
+      width: 100%;
+      min-height: 132px;
+      resize: vertical;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      line-height: 1.5;
+    }
+
+    #namesTextInput:focus {
+      outline: 3px solid rgba(23, 105, 170, 0.16);
+      border-color: var(--ocean);
     }
 
     .download-link {
@@ -614,6 +655,10 @@
         padding: 14px;
       }
 
+      .paste-controls {
+        grid-template-columns: 1fr;
+      }
+
       button,
       .upload-label,
       .download-link {
@@ -661,6 +706,15 @@
       <div class="status-wrap">
         <span class="status-label">Status</span>
         <span class="status" id="status">No file uploaded yet.</span>
+      </div>
+    </section>
+
+    <section class="paste-panel" aria-labelledby="pasteNamesHeading">
+      <h2 id="pasteNamesHeading">Paste Participant Names</h2>
+      <p>Paste one name per line, or copy the Badge No, Name, and Title columns directly from Excel.</p>
+      <div class="paste-controls">
+        <textarea id="namesTextInput" placeholder="Ahmed Ali&#10;Fatima Saeed&#10;Noor Hassan" aria-label="Participant names"></textarea>
+        <button class="primary" id="loadNamesButton" type="button">Load Pasted Names</button>
       </div>
     </section>
 
@@ -757,6 +811,8 @@
     let wheelEntries = [];
 
     const fileInput = document.getElementById("fileInput");
+    const namesTextInput = document.getElementById("namesTextInput");
+    const loadNamesButton = document.getElementById("loadNamesButton");
     const drawOneButton = document.getElementById("drawOneButton");
     const drawTenButton = document.getElementById("drawTenButton");
     const downloadButton = document.getElementById("downloadButton");
@@ -781,6 +837,7 @@
     const wheelContext = wheelCanvas.getContext("2d");
 
     fileInput.addEventListener("change", handleFileUpload);
+    loadNamesButton.addEventListener("click", handlePastedNames);
     drawOneButton.addEventListener("click", () => drawWinners(SINGLE_DRAW_SIZE));
     drawTenButton.addEventListener("click", () => drawWinners(MULTI_DRAW_SIZE));
     downloadButton.addEventListener("click", downloadWinners);
@@ -861,6 +918,54 @@
             : "The file could not be loaded. Please check the format and try again.",
           "warning"
         );
+      }
+    }
+
+    function handlePastedNames() {
+      const text = namesTextInput.value.trim();
+
+      if (!text) {
+        setDrawMessage("Paste at least one participant name before loading the list.", "warning");
+        return;
+      }
+
+      try {
+        const workbook = XLSX.read(text, { type: "string" });
+        const firstSheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+          header: 1,
+          blankrows: false,
+          defval: ""
+        });
+        const parsedParticipants = extractParticipants(rows);
+
+        if (!parsedParticipants.length) {
+          throw new Error("No participant names were found in the pasted text.");
+        }
+
+        participants = parsedParticipants.slice(0, MAX_PARTICIPANTS);
+        availableParticipants = [...participants];
+        latestWinners = [];
+        drawHistory = [];
+        winnersPage = 1;
+        wheelRotation = 0;
+        wheelEntries = [];
+        fileInput.value = "";
+
+        renderAll();
+
+        const ignoredCount = Math.max(0, parsedParticipants.length - MAX_PARTICIPANTS);
+        status.textContent = ignoredCount > 0
+          ? `${participants.length} unique participants loaded from pasted text. ${ignoredCount} extra participants were ignored.`
+          : `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"} loaded from pasted text.`;
+
+        if (participants.length < MULTI_DRAW_SIZE) {
+          setDrawMessage(`Names loaded. You can draw 1 winner now. At least ${MULTI_DRAW_SIZE} participants are required for Draw 10 Names.`, "warning");
+        } else {
+          setDrawMessage("Names loaded successfully. Choose Draw 1 Name or Draw 10 Names to begin.", "");
+        }
+      } catch (error) {
+        setDrawMessage(error.message || "The pasted names could not be loaded.", "warning");
       }
     }
 
