@@ -6,6 +6,8 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 
 - Upload participant names from `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, or `.csv`
 - Paste names directly, one per line, or paste columns copied from Excel
+- Upload or paste previous-month winners to exclude them from the current draw
+- Match previous winners by badge number or normalized name
 - Support up to 800 unique participants
 - Read participant details from `Badge No`, `Name`, and `Title`
 - Show the full uploaded list in a visible scrollable table
@@ -25,6 +27,10 @@ Browser-based raffle webpage for drawing winners from an uploaded Excel or CSV l
 - If headers are missing, the app falls back to the first filled cells in each row.
 - Duplicate participants are removed automatically.
 - If `Badge No` exists, it is used as the unique key. Otherwise the app falls back to `Name + Title`.
+
+## Monthly Fairness Rule
+
+After loading the current month's participant list, use **Exclude Previous Winners** to upload or paste the winners from earlier months. A participant is excluded when their badge number or name matches a previous winner. The exclusion remains active when the raffle is reset and can be replaced by loading a new previous-winners list.
 
 ## Run Locally
 

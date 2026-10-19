@@ -173,7 +173,8 @@
       align-items: stretch;
     }
 
-    #namesTextInput {
+    #namesTextInput,
+    #previousWinnersTextInput {
       width: 100%;
       min-height: 132px;
       resize: vertical;
@@ -186,9 +187,23 @@
       line-height: 1.5;
     }
 
-    #namesTextInput:focus {
+    #namesTextInput:focus,
+    #previousWinnersTextInput:focus {
       outline: 3px solid rgba(23, 105, 170, 0.16);
       border-color: var(--ocean);
+    }
+
+    .previous-winners-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 220px;
+    }
+
+    .previous-winners-status {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
     }
 
     .download-link {
@@ -210,7 +225,8 @@
       box-shadow: none;
     }
 
-    #fileInput {
+    #fileInput,
+    #previousWinnersFileInput {
       display: none;
     }
 
@@ -718,6 +734,20 @@
       </div>
     </section>
 
+    <section class="paste-panel" aria-labelledby="previousWinnersHeading">
+      <h2 id="previousWinnersHeading">Exclude Previous Winners</h2>
+      <p>Upload or paste winners from previous months. Matching badge numbers or names will not be eligible this month.</p>
+      <div class="paste-controls">
+        <textarea id="previousWinnersTextInput" placeholder="Paste previous winners here, one per line, or paste Badge No, Name, and Title columns" aria-label="Previous winners"></textarea>
+        <div class="previous-winners-controls">
+          <label class="upload-label" for="previousWinnersFileInput">Upload Previous Winners</label>
+          <input id="previousWinnersFileInput" type="file" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
+          <button class="secondary" id="loadPreviousWinnersButton" type="button">Load Previous Winners</button>
+          <span class="previous-winners-status" id="previousWinnersStatus">No previous winners loaded.</span>
+        </div>
+      </div>
+    </section>
+
     <section class="summary-grid" aria-label="Raffle summary">
       <article class="summary-card">
         <span>Uploaded Names</span>
@@ -809,10 +839,16 @@
     let isSpinning = false;
     let wheelRotation = 0;
     let wheelEntries = [];
+    let previousWinners = [];
+    let previousWinnerKeys = new Set();
 
     const fileInput = document.getElementById("fileInput");
     const namesTextInput = document.getElementById("namesTextInput");
     const loadNamesButton = document.getElementById("loadNamesButton");
+    const previousWinnersTextInput = document.getElementById("previousWinnersTextInput");
+    const previousWinnersFileInput = document.getElementById("previousWinnersFileInput");
+    const loadPreviousWinnersButton = document.getElementById("loadPreviousWinnersButton");
+    const previousWinnersStatus = document.getElementById("previousWinnersStatus");
     const drawOneButton = document.getElementById("drawOneButton");
     const drawTenButton = document.getElementById("drawTenButton");
     const downloadButton = document.getElementById("downloadButton");
@@ -838,6 +874,8 @@
 
     fileInput.addEventListener("change", handleFileUpload);
     loadNamesButton.addEventListener("click", handlePastedNames);
+    previousWinnersFileInput.addEventListener("change", handlePreviousWinnersFileUpload);
+    loadPreviousWinnersButton.addEventListener("click", handlePastedPreviousWinners);
     drawOneButton.addEventListener("click", () => drawWinners(SINGLE_DRAW_SIZE));
     drawTenButton.addEventListener("click", () => drawWinners(MULTI_DRAW_SIZE));
     downloadButton.addEventListener("click", downloadWinners);
@@ -876,7 +914,7 @@
         }
 
         participants = parsedParticipants.slice(0, MAX_PARTICIPANTS);
-        availableParticipants = [...participants];
+        availableParticipants = getEligibleParticipants();
         latestWinners = [];
         drawHistory = [];
         winnersPage = 1;
@@ -890,6 +928,8 @@
         status.textContent = ignoredCount > 0
           ? `${participantLabel} loaded from ${file.name}. ${ignoredCount} extra ${ignoredCount === 1 ? "participant was" : "participants were"} ignored.`
           : `${participantLabel} loaded from ${file.name}.`;
+
+        updateParticipantStatus();
 
         if (participants.length < MULTI_DRAW_SIZE) {
           setDrawMessage(`Participants loaded. You can draw 1 winner now. At least ${MULTI_DRAW_SIZE} unique participants are required to draw 10 at once.`, "warning");
@@ -944,7 +984,7 @@
         }
 
         participants = parsedParticipants.slice(0, MAX_PARTICIPANTS);
-        availableParticipants = [...participants];
+        availableParticipants = getEligibleParticipants();
         latestWinners = [];
         drawHistory = [];
         winnersPage = 1;
@@ -959,6 +999,8 @@
           ? `${participants.length} unique participants loaded from pasted text. ${ignoredCount} extra participants were ignored.`
           : `${participants.length} unique ${participants.length === 1 ? "participant" : "participants"} loaded from pasted text.`;
 
+        updateParticipantStatus();
+
         if (participants.length < MULTI_DRAW_SIZE) {
           setDrawMessage(`Names loaded. You can draw 1 winner now. At least ${MULTI_DRAW_SIZE} participants are required for Draw 10 Names.`, "warning");
         } else {
@@ -967,6 +1009,109 @@
       } catch (error) {
         setDrawMessage(error.message || "The pasted names could not be loaded.", "warning");
       }
+    }
+
+    async function handlePreviousWinnersFileUpload(event) {
+      const file = event.target.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        const data = await readFileAsArrayBuffer(file);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+
+        if (!firstSheetName) {
+          throw new Error("The previous-winners file does not contain a readable sheet.");
+        }
+
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+          header: 1,
+          blankrows: false,
+          defval: ""
+        });
+        loadPreviousWinners(extractParticipants(rows), file.name);
+      } catch (error) {
+        previousWinnersFileInput.value = "";
+        setDrawMessage(error.message || "The previous-winners file could not be loaded.", "warning");
+      }
+    }
+
+    function handlePastedPreviousWinners() {
+      const text = previousWinnersTextInput.value.trim();
+
+      if (!text) {
+        setDrawMessage("Paste or upload at least one previous winner before loading the exclusion list.", "warning");
+        return;
+      }
+
+      try {
+        const workbook = XLSX.read(text, { type: "string" });
+        const firstSheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+          header: 1,
+          blankrows: false,
+          defval: ""
+        });
+        const parsedWinners = extractParticipants(rows);
+
+        if (!parsedWinners.length) {
+          throw new Error("No previous winners were found in the pasted text.");
+        }
+
+        loadPreviousWinners(parsedWinners, "pasted text");
+      } catch (error) {
+        setDrawMessage(error.message || "The pasted previous winners could not be loaded.", "warning");
+      }
+    }
+
+    function loadPreviousWinners(winners, sourceLabel) {
+      previousWinners = winners;
+      previousWinnerKeys = new Set(previousWinners.flatMap(getParticipantMatchKeys));
+      previousWinnersTextInput.value = "";
+      applyPreviousWinnerExclusions();
+      previousWinnersStatus.textContent = `${previousWinners.length} previous ${previousWinners.length === 1 ? "winner" : "winners"} loaded from ${sourceLabel}.`;
+      updateParticipantStatus();
+      setDrawMessage(`${previousWinners.length} previous ${previousWinners.length === 1 ? "winner is" : "winners are"} excluded from this month's raffle.`, "success");
+    }
+
+    function applyPreviousWinnerExclusions() {
+      availableParticipants = getEligibleParticipants();
+      wheelEntries = buildWheelEntries();
+      renderAll();
+    }
+
+    function getEligibleParticipants() {
+      return participants.filter((participant) => getParticipantMatchKeys(participant).every((key) => !previousWinnerKeys.has(key)));
+    }
+
+    function getParticipantMatchKeys(participant) {
+      const keys = [];
+      const badgeNo = normalizeCellValue(participant?.badgeNo).toLowerCase();
+      const name = normalizeCellValue(participant?.name).toLowerCase();
+
+      if (badgeNo) {
+        keys.push(`badge:${badgeNo}`);
+      }
+
+      if (name) {
+        keys.push(`name:${name}`);
+      }
+
+      return keys;
+    }
+
+    function updateParticipantStatus() {
+      if (!participants.length) {
+        return;
+      }
+
+      const excludedCount = participants.length - availableParticipants.length;
+      status.textContent = excludedCount
+        ? `${availableParticipants.length} eligible participants loaded. ${excludedCount} previous winner${excludedCount === 1 ? "" : "s"} excluded.`
+        : `${participants.length} eligible participants loaded.`;
     }
 
     function readFileAsArrayBuffer(file) {
@@ -1135,7 +1280,7 @@
         return;
       }
 
-      availableParticipants = [...participants];
+      availableParticipants = getEligibleParticipants();
       latestWinners = [];
       drawHistory = [];
       winnersPage = 1;
@@ -1143,8 +1288,8 @@
       wheelEntries = [];
 
       renderAll();
-      status.textContent = `${participants.length} participants are ready for a fresh raffle.`;
-      setDrawMessage("Raffle reset complete. All uploaded participants are eligible again.", "");
+      updateParticipantStatus();
+      setDrawMessage("Raffle reset complete. Drawn winners are available again; previous-month exclusions remain active.", "");
     }
 
     function renderAll() {
